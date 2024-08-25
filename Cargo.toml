@@ -1,0 +1,16 @@
+[package]
+name = "rust-reverse-shell"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true
+
+[dependencies]
+clap = { version = "4.4.11", features = ["derive"] }
+daemonize = "0.5.0"
